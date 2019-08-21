@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package model;
+
+message Report {
+    string timestamp = 1;
+    string userid = 2;
+    string activities = 3;
+    string applicationid = 4;
+    string cif = 5;
+    string accountno = 6;
+    string ktpid = 7;
+}
+
+message ReportList {
+    repeated Report list = 1;
+}
+
+import "google/protobuf/Empty.proto";
+
+message UserId {
+    string user_id = 1;
+}
+
+service Reports {
+    rpc AddReport(Report) returns (google.protobuf.Empty) {}
+    rpc List(UserId) returns (ReportList) {}
+}
