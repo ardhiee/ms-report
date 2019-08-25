@@ -10,6 +10,7 @@ message Report {
     string cif = 5;
     string accountno = 6;
     string ktpid = 7;
+    string status = 8;
 }
 
 message ReportList {
@@ -18,11 +19,11 @@ message ReportList {
 
 import "google/protobuf/Empty.proto";
 
-message UserId {
+message ApplicationUserId {
     string user_id = 1;
 }
 
 service Reports {
     rpc AddReport(Report) returns (google.protobuf.Empty) {}
-    rpc List(UserId) returns (ReportList) {}
+    rpc List(ApplicationUserId) returns (ReportList) {}
 }

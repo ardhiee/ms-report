@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net"
+	"os"
 
 	"fmt"
 	"ms-report/config"
@@ -16,57 +17,86 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var localStorage *model.ReportList
-
-func init() {
-	localStorage = new(model.ReportList)
-	localStorage.List = make([]*model.Report, 0)
-}
-
+// connect to database
 func connect() (*sql.DB, error) {
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/poc")
+	db, err := sql.Open("mysql", "root:password@tcp("+os.Getenv("DBCONN")+")/poc")
 	if err != nil {
+		fmt.Println("Fail 1")
 		panic("dbpool init >> " + err.Error())
 	}
 
 	return db, nil
 }
 
+// insert the report function
 func insertReport(param *model.Report) {
 	db, err := connect()
 	if err != nil {
+		fmt.Println("Cant connect to DB.")
 		fmt.Println(err.Error())
 		return
 	}
 	defer db.Close()
 
-	stmt, err := db.Prepare("insert into tb_report values (?, ?, ?, ?, ?, ?, ?)")
-	//stmt.Exec(timestamp, userid, activities, applicationid, cif, accountno, ktpid)
-	stmt.Exec(param.Timestamp, param.Userid, param.Activities, param.Applicationid, param.Cif, param.Accountno, param.Ktpid)
-	//stmt.Exec("1", "1", "1", "1", "1", "1", "1")
+	stmt, err := db.Prepare("insert into tb_report values (?, ?, ?, ?, ?, ?, ?, ?)")
+	stmt.Exec(param.Timestamp, param.Userid, param.Activities, param.Applicationid, param.Cif, param.Accountno, param.Ktpid, param.Status)
+
 	if err != nil {
+		fmt.Println("Cant insert to DB.")
 		fmt.Println(err.Error())
 		return
 	}
 	fmt.Println("insert success!")
 }
 
+// query the data
+func selectReport(appUserID string) *model.ReportList {
+
+	var result = &model.ReportList{}
+
+	db, err := connect()
+	if err != nil {
+		fmt.Println("Cant connect to DB.")
+		fmt.Println(err.Error())
+	}
+	defer db.Close()
+
+	var userid = appUserID
+	rows, err := db.Query("select timestamp, userid, activities, applicationid, cif, accountno, ktpid, status from tb_report where userid = ?", userid)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var each = &model.Report{}
+		var err = rows.Scan(&each.Timestamp, &each.Userid, &each.Activities, &each.Applicationid, &each.Cif, &each.Accountno, &each.Ktpid, &each.Status)
+
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		result.List = append(result.List, each)
+	}
+	return result
+}
+
+// ReportServer data type
 type ReportsServer struct{}
 
+// AddReport grpc function server to insert into database
 func (ReportsServer) AddReport(ctx context.Context, param *model.Report) (*empty.Empty, error) {
-	//localStorage.List = append(localStorage.List, param)
-
 	log.Println("Adding new report", param.String())
-	log.Println("Adding new report", param.Applicationid)
-
-	insertReport(param)
-	//insertReport(param.Timestamp, param.Userid, param.Activities, param.Applicationid, param.Cif, param.Accountno, param.Ktpid)
-
+	go insertReport(param)
 	return new(empty.Empty), nil
 }
 
-func (ReportsServer) List(ctx context.Context, void *model.UserId) (*model.ReportList, error) {
-	return localStorage, nil
+// List grpc function server to query from database
+func (ReportsServer) List(ctx context.Context, param *model.ApplicationUserId) (*model.ReportList, error) {
+	appUserID := param.UserId
+
+	fmt.Println(appUserID)
+
+	return selectReport(appUserID), nil
 }
 
 func main() {
