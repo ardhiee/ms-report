@@ -1,2 +1,2 @@
 # ms-report
-simple grpc to mysql
+simple grpc & http to mysql
