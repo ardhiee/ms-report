@@ -6,14 +6,13 @@ import (
 	"log"
 	"time"
 
-	"ms-report/config"
 	"ms-report/model"
 
 	"google.golang.org/grpc"
 )
 
 func serviceReport() model.ReportsClient {
-	port := config.SERVICE_REPORT_PORT
+	port := ":8000"
 	conn, err := grpc.Dial(port, grpc.WithInsecure())
 	if err != nil {
 		log.Fatal("could not connect to", port, err)
